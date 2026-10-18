@@ -1,0 +1,32 @@
+{
+  "discovery": "catalog",
+  "catalog_url": "https://www.scielo.org.pe/scielo.php?script=sci_alphabetic&lng=es&nrm=iso",
+  "catalog_journals": [
+    "1810-9993",
+    "2523-6326",
+    "2309-0413",
+    "1810-634X",
+    "1562-4730",
+    "1726-2216"
+  ],
+  "query": "",
+  "languages": [
+    "es"
+  ],
+  "collections": [
+    "per"
+  ],
+  "years": [],
+  "scielo_areas": [],
+  "wos_areas": [],
+  "document_types": [],
+  "max_pages": 5,
+  "max_articles": 25,
+  "delay_seconds": 1,
+  "timeout_seconds": 40,
+  "retries": 2,
+  "max_response_mb": 40,
+  "robots_policy": "report",
+  "user_agent": "SciELO-MVP/0.1 (small research crawler)",
+  "data_dir": "data/test-1000/peru-catalog"
+}

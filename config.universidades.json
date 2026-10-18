@@ -1,0 +1,157 @@
+{
+  "data_dir": "data/universidades",
+  "languages": [
+    "es"
+  ],
+  "thesis_only": true,
+  "sample_seed": "aw-2026",
+  "delay_seconds": 2,
+  "timeout_seconds": 40,
+  "render_timeout_seconds": 30,
+  "settle_seconds": 5,
+  "retries": 2,
+  "max_response_mb": 40,
+  "impersonate": "chrome",
+  "robots_agent": "UniversidadesMVP",
+  "batch_size": 25,
+  "max_consecutive_errors": 10,
+  "headless": true,
+  "repos": [
+    {
+      "key": "upch",
+      "name": "Universidad Peruana Cayetano Heredia",
+      "base_url": "https://repositorio.upch.edu.pe"
+    },
+    {
+      "key": "unfv",
+      "name": "Universidad Nacional Federico Villarreal",
+      "base_url": "https://repositorio.unfv.edu.pe"
+    },
+    {
+      "key": "unmsm",
+      "name": "Universidad Nacional Mayor de San Marcos",
+      "base_url": "https://repositorio.unmsm.edu.pe",
+      "discovery": "htmlmap",
+      "sitemap": "/htmlmap",
+      "item_pattern": "/handle/UNMSM/\\d+/?$",
+      "item_suffix": "?show=full"
+    },
+    {
+      "key": "pucp",
+      "name": "Pontificia Universidad Católica del Perú",
+      "base_url": "https://repositorio.pucp.edu.pe",
+      "sitemap": "/server/sitemaps/sitemap_index.xml"
+    },
+    {
+      "key": "une",
+      "name": "Universidad Nacional de Educación Enrique Guzmán y Valle",
+      "base_url": "https://repositorio.une.edu.pe"
+    },
+    {
+      "key": "unap",
+      "name": "Universidad Nacional del Altiplano",
+      "base_url": "https://repositorio.unap.edu.pe"
+    },
+    {
+      "key": "unica",
+      "name": "Universidad Nacional San Luis Gonzaga",
+      "base_url": "https://repositorio.unica.edu.pe"
+    },
+    {
+      "key": "lamolina",
+      "name": "Universidad Nacional Agraria La Molina",
+      "base_url": "https://repositorio.lamolina.edu.pe",
+      "render": true,
+      "item_suffix": "/full",
+      "wait_for": "xpath://html[head/meta[@name='citation_title']]//table//td"
+    },
+    {
+      "key": "upc",
+      "name": "Universidad Peruana de Ciencias Aplicadas",
+      "base_url": "https://repositorioacademico.upc.edu.pe",
+      "render": true,
+      "enabled": false
+    },
+    {
+      "key": "esan",
+      "name": "Universidad ESAN",
+      "base_url": "https://repositorio.esan.edu.pe",
+      "sitemap_rewrites": [
+        [
+          "^http://localhost:4000",
+          "https://repositorio.esan.edu.pe"
+        ]
+      ],
+      "item_rewrites": [
+        [
+          "^http://localhost:4000",
+          "https://repositorio.esan.edu.pe"
+        ]
+      ],
+      "render": true,
+      "item_suffix": "/full",
+      "wait_for": "xpath://html[head/meta[@name='citation_title']]//table//td"
+    },
+    {
+      "key": "upn",
+      "name": "Universidad Privada del Norte",
+      "base_url": "https://repositorio.upn.edu.pe",
+      "sitemap": "/backend/sitemaps/sitemap_index.xml",
+      "item_rewrites": [
+        [
+          "/items/",
+          "/item/"
+        ]
+      ],
+      "item_pattern": "/item/[0-9a-f-]{36}/?$",
+      "render": true,
+      "parser": "mui",
+      "wait_for": "xpath://a[contains(@href,'/collection/')]"
+    },
+    {
+      "key": "uncp",
+      "name": "Universidad Nacional del Centro del Perú",
+      "base_url": "https://repositorio.uncp.edu.pe",
+      "sitemap": "/server/sitemaps/sitemap_index.xml",
+      "sitemap_rewrites": [
+        [
+          "^(https?://[^/]+)/sitemap(\\d+)\\.xml$",
+          "\\1/server/sitemaps/sitemap\\2.xml"
+        ]
+      ],
+      "render": true,
+      "item_suffix": "/full",
+      "wait_for": "xpath://html[head/meta[@name='citation_title']]//table//td"
+    },
+    {
+      "key": "unc",
+      "name": "Universidad Nacional de Cajamarca",
+      "base_url": "https://repositorio.unc.edu.pe",
+      "render": true,
+      "item_suffix": "/full",
+      "wait_for": "xpath://html[head/meta[@name='citation_title']]//table//td"
+    },
+    {
+      "key": "unheval",
+      "name": "Universidad Nacional Hermilio Valdizán",
+      "base_url": "https://repositorio.unheval.edu.pe",
+      "sitemap": "/backend/sitemaps/sitemap_index.xml",
+      "sitemap_rewrites": [
+        [
+          "^(https?://[^/]+)/sitemap(\\d+)\\.xml$",
+          "\\1/backend/sitemaps/sitemap\\2.xml"
+        ]
+      ],
+      "item_rewrites": [
+        [
+          "/items/",
+          "/item/"
+        ]
+      ],
+      "item_pattern": "/item/[0-9a-f-]{36}/?$",
+      "render": true,
+      "parser": "mui",
+      "wait_for": "xpath://a[contains(@href,'/collection/')]"
+    }
+  ]
+}

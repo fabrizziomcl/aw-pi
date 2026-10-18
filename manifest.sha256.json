@@ -1,0 +1,60 @@
+{
+  "description": "Copias de los módulos actuales del proyecto padre; no incluye datos ni herramientas gráficas.",
+  "files": [
+    {
+      "file": "scielo_mvp/__init__.py",
+      "source": "scielo_mvp/__init__.py",
+      "sha256": "ac25dab4f0fe705b262e4327eea86dd13f30c2d2b2b30756b325040188687e6d"
+    },
+    {
+      "file": "scielo_mvp/benchmark.py",
+      "source": "scielo_mvp/benchmark.py",
+      "sha256": "c22217c55f69f1e271d00b0626a5a2a261b1944b5a02906f6ba547b34fef975a"
+    },
+    {
+      "file": "scielo_mvp/catalog.py",
+      "source": "scielo_mvp/catalog.py",
+      "sha256": "95a26ff915890921a7633cd44e82f844c1c3bdd2edc28cc748b3be6bdd43882a"
+    },
+    {
+      "file": "scielo_mvp/config.py",
+      "source": "scielo_mvp/config.py",
+      "sha256": "22512383c763d78c518823695b15674061a1a77a3df5928079e00ade2a116fc1"
+    },
+    {
+      "file": "scielo_mvp/exports.py",
+      "source": "scielo_mvp/exports.py",
+      "sha256": "8e3032c2d904480e14faaddd6b27b12ba7626eca9273d0dc4ed722318174c64b"
+    },
+    {
+      "file": "scielo_mvp/http.py",
+      "source": "scielo_mvp/http.py",
+      "sha256": "353064e1c627aabf87b2ae494a1f0a2e368cbc07f7e205d4540b15f6baa4fa2d"
+    },
+    {
+      "file": "scielo_mvp/parsers.py",
+      "source": "scielo_mvp/parsers.py",
+      "sha256": "bd6db804cd2037dcf614ba4956bc91604592cc0ba590bb320d86134a660ebd43"
+    },
+    {
+      "file": "scielo_mvp/pipeline.py",
+      "source": "scielo_mvp/pipeline.py",
+      "sha256": "432fb4194d448a8eab52866f7d845cff79d8877e238b25d88c98dc92251c1d38"
+    },
+    {
+      "file": "scielo_mvp/storage.py",
+      "source": "scielo_mvp/storage.py",
+      "sha256": "4013cbd195432160d080feff86a4f484a67e69b864087da812d48362ee35d664"
+    },
+    {
+      "file": "scielo_mvp/validation.py",
+      "source": "scielo_mvp/validation.py",
+      "sha256": "80d85d42bda2846fce68e773120fd85a8bc0e5e5b03fe61afbc41f38ac0505d1"
+    },
+    {
+      "file": "config.peru-catalog.json",
+      "source": "config.peru-catalog.json",
+      "sha256": "a905b547a4bf97475300fd5f1cc1bf24a5724a51562e608a6f687adc5ebb7761"
+    }
+  ]
+}
