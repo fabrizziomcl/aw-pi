@@ -2,3 +2,8 @@
 AGENTS.md
 universidades.md
 .env
+.venv/
+__pycache__/
+.pytest_cache/
+data/
+config.original.json
