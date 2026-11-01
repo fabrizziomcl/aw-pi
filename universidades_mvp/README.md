@@ -1,12 +1,12 @@
 # universidades_mvp — tesis de 14 repositorios universitarios peruanos
 
-Extrae fichas de tesis (título, resumen, autores, asesores, grado, fecha, tipo y enlace al PDF) de los 14 repositorios listados en [`../universidades.md`](../universidades.md). Usa web scraping de HTML con **curl_cffi, BeautifulSoup y Selenium**, sin APIs. Reutiliza piezas de `scielo_mvp`: limpieza de texto, códigos de idioma, `Retry-After` y escritura atómica.
+Extrae fichas de tesis (título, resumen, autores, asesores, grado, fecha, tipo y enlace al PDF) de los 14 repositorios definidos en [`../config.universidades.json`](../config.universidades.json). Usa web scraping de HTML con **curl_cffi, BeautifulSoup y Selenium**, sin APIs. Reutiliza piezas de `scielo_mvp`: limpieza de texto, códigos de idioma, `Retry-After` y escritura atómica.
 
 Un **solo comando** recorre los sitios. Las diferencias entre ellos se declaran en `config.universidades.json`, no en el código. Por defecto se ejecutan 13: UPC está deshabilitado por los límites de solicitudes que aplica (ver §5).
 
 ## 1. Instalar
 
-Desde `codigo`, con Python 3.10 o superior y **Google Chrome** instalado (Selenium descarga su driver automáticamente):
+Desde la raíz del repositorio, con Python 3.10 o superior y **Google Chrome** instalado (Selenium descarga su driver automáticamente):
 
 ```powershell
 python -m venv .venv

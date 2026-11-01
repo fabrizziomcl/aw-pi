@@ -9,19 +9,17 @@ Contiene dos extractores, ambos basados en web scraping de HTML **sin API**:
 | [`scielo_mvp/`](#a-scielo_mvp--artículos-de-scielo-perú) | SciELO Perú: 6 revistas de ingeniería y ciencias | `requests` + BeautifulSoup | 1.000 artículos en español con abstract |
 | [`universidades_mvp/`](#b-universidades_mvp--tesis-de-repositorios-universitarios) | 14 repositorios universitarios peruanos | curl_cffi + BeautifulSoup + Selenium | Tesis con resumen, autores, asesores, grado y enlace al PDF |
 
-Las etapas posteriores del informe (`docs/`), como embeddings, recomendación, tópicos y grafo, **no forman parte de este código**.
+Las etapas posteriores del informe, como embeddings, recomendación, tópicos y grafo, **no forman parte de este código**.
 
 ## Estructura
 
 ```text
-codigo/
+aw-pi/
 ├── scielo_mvp/                    # Artículos de SciELO (python -m scielo_mvp.benchmark)
 ├── universidades_mvp/             # Tesis universitarias (python -m universidades_mvp.run); README propio
 ├── tests/                         # Pruebas sin red de ambos paquetes
-├── docs/                          # Informe parcial (LaTeX IEEE y PDF)
 ├── config.peru-catalog.json       # Perfil de SciELO Perú: español, 6 revistas
 ├── config.universidades.json      # Perfil de los 14 repositorios (13 habilitados)
-├── universidades.md               # Evaluación de qué repositorios se pueden scrapear
 ├── manifest.sha256.json           # Huellas SHA-256 de los módulos de scielo_mvp y su perfil
 ├── requirements.txt               # Dependencias de scielo_mvp (versiones fijadas)
 ├── requirements-universidades.txt # Lo anterior + curl_cffi y Selenium
@@ -33,7 +31,7 @@ codigo/
 
 ## Inicio rápido
 
-Python 3.10 o superior. Abre PowerShell **dentro de `codigo`**: los paquetes y las carpetas `data_dir` se resuelven respecto del directorio actual.
+Python 3.10 o superior. Abre PowerShell **en la raíz del repositorio** (`aw-pi`): los paquetes y las carpetas `data_dir` se resuelven respecto del directorio actual.
 
 ```powershell
 python -m venv .venv
@@ -176,7 +174,7 @@ Si modificas un módulo, el manifiesto dejará de coincidir: regenéralo o indic
 
 ## B. `universidades_mvp` — tesis de repositorios universitarios
 
-La documentación completa está en [`universidades_mvp/README.md`](universidades_mvp/README.md), y la evaluación de cada sitio en [`universidades.md`](universidades.md). En resumen:
+La documentación completa está en [`universidades_mvp/README.md`](universidades_mvp/README.md). La configuración y las diferencias entre repositorios están en [`config.universidades.json`](config.universidades.json). En resumen:
 
 ```powershell
 .\.venv\Scripts\python.exe -m universidades_mvp.run --list                         # repositorios configurados
@@ -218,7 +216,7 @@ Son 16 pruebas, ninguna usa la red:
 
 | Síntoma | Causa y solución |
 |---|---|
-| `No module named scielo_mvp` / `universidades_mvp` | El comando no se ejecutó desde `codigo` |
+| `No module named scielo_mvp` / `universidades_mvp` | El comando no se ejecutó desde la raíz del repositorio |
 | `No existe una base para verificar` | `--verify-only` apunta a una `data_dir` sin base SQLite; ejecuta antes una extracción o corrige `data_dir` |
 | `Los filtros del catálogo cambiaron` / `La configuración de descubrimiento cambió` | La `data_dir` contiene una muestra con otros filtros; usa otra carpeta |
 | `status: blocked` | El sitio respondió 401/403/429 o mostró un desafío antibots; espera y repite el comando para reanudar |
