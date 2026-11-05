@@ -31,16 +31,92 @@ aw-pi/
 
 ## Inicio rápido
 
-Python 3.10 o superior. Abre PowerShell **en la raíz del repositorio** (`aw-pi`): los paquetes y las carpetas `data_dir` se resuelven respecto del directorio actual.
+Usa Python 3.10 o superior y ejecuta todos los comandos **desde la raíz del repositorio**
+(`aw-pi`). Las rutas de `data_dir` son relativas al directorio actual. Primero crea el
+entorno e instala las dependencias; si se omite este paso, los módulos no funcionarán.
+
+### Linux/macOS
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-universidades.txt  # sirve para ambos paquetes
+.venv/bin/python --version
+```
+
+Para ejecutar repositorios que usan Selenium, instala un navegador **real** (un lanzador
+Snap no es suficiente).
+
+En Ubuntu/Debian:
+
+```bash
+curl -fsSL -o /tmp/google-chrome-stable_current_amd64.deb \
+  https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt-get install -y /tmp/google-chrome-stable_current_amd64.deb
+google-chrome --version
+```
+
+En macOS:
+
+```bash
+brew install --cask google-chrome
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --version
+```
+
+Comprueba que Selenium puede abrir el navegador antes de iniciar una extracción:
+
+```bash
+.venv/bin/python - <<'PY'
+from selenium import webdriver
+
+options = webdriver.ChromeOptions()
+options.add_argument("--headless=new")
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
+options.add_argument("--disable-gpu")
+driver = webdriver.Chrome(options=options)
+print("Selenium OK:", driver.capabilities["browserVersion"])
+driver.quit()
+PY
+```
+
+Después puedes ejecutar:
+
+```bash
+
+# SciELO: prueba rápida
+.venv/bin/python -m scielo_mvp.benchmark --config config.peru-catalog.json --target 5
+
+# Tesis: 100 por repositorio habilitado
+.venv/bin/python -m universidades_mvp.run --target 100
+
+# Pruebas sin red
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pytest
+```
+
+### Windows (PowerShell)
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-universidades.txt   # sirve para ambos paquetes
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-universidades.txt
+.\.venv\Scripts\python.exe --version
+```
 
-# SciELO: 1.000 artículos
-.\.venv\Scripts\python.exe -m scielo_mvp.benchmark --config config.peru-catalog.json --target 1000
+En Windows, instala Google Chrome desde
+<https://www.google.com/chrome/> y comprueba:
 
-# Tesis: 100 por repositorio habilitado (requiere Google Chrome)
+```powershell
+& "$env:ProgramFiles\Google\Chrome\Application\chrome.exe" --version
+```
+
+Después puedes ejecutar:
+
+```powershell
+
+# SciELO: prueba rápida
+.\.venv\Scripts\python.exe -m scielo_mvp.benchmark --config config.peru-catalog.json --target 5
+
+# Tesis: 100 por repositorio habilitado
 .\.venv\Scripts\python.exe -m universidades_mvp.run --target 100
 
 # Pruebas sin red
@@ -48,7 +124,10 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-En Linux/macOS, usa `python3 -m venv .venv` y `.venv/bin/python` en lugar de `.\.venv\Scripts\python.exe`. Si solo necesitas SciELO, basta con `requirements.txt`.
+Para obtener la muestra completa de SciELO, cambia `--target 5` por `--target 1000`.
+Si solo necesitas SciELO, instala `requirements.txt` en lugar de
+`requirements-universidades.txt`. Para probar los 14 repositorios debes indicar
+`--repos ...` porque UPC está deshabilitado por defecto.
 
 Los dos extractores comparten el mismo comportamiento:
 - se pueden **reanudar**: tras `Ctrl+C`, repite el comando;
@@ -64,8 +143,8 @@ El flujo es **catálogo → revistas → números → artículos → HTML y meta
 
 ### A.1 Generar una muestra de 1.000 registros
 
-```powershell
-.\.venv\Scripts\python.exe -m scielo_mvp.benchmark --config config.peru-catalog.json --target 1000
+```bash
+.venv/bin/python -m scielo_mvp.benchmark --config config.peru-catalog.json --target 1000
 ```
 
 La salida se escribe en **`data/test-1000/peru-catalog/`**. Cada artículo y cada página del catálogo es una solicitud, con al menos 1 segundo de pausa entre ellas: una ejecución completa suele tardar entre media hora y más de una hora, según la respuesta del portal.
@@ -79,8 +158,8 @@ No se garantiza obtener los mismos documentos en una nueva ejecución: el portal
 
 ### A.2 Verificar y exportar sin usar la red
 
-```powershell
-.\.venv\Scripts\python.exe -m scielo_mvp.benchmark --config config.peru-catalog.json --target 1000 --verify-only
+```bash
+.venv/bin/python -m scielo_mvp.benchmark --config config.peru-catalog.json --target 1000 --verify-only
 ```
 
 El resultado esperado es `status: passed`, `counts.valid_records >= 1000`, `integrity_errors: []` y código de salida `0`. La auditoría comprueba, para cada registro: HTTP 200 registrado, título, identidad, idioma de publicación, abstract compatible con el filtro y HTML conservado con SHA-256 correcto. Los artículos sin abstract y las importaciones locales no cuentan.
@@ -93,7 +172,7 @@ El resultado esperado es `status: passed`, `counts.valid_records >= 1000`, `inte
 $cfg = Get-Content 'config.peru-catalog.json' -Raw | ConvertFrom-Json
 $cfg.data_dir = 'C:/ruta/a/peru-catalog'
 $cfg | ConvertTo-Json -Depth 10 | Set-Content 'config.original.json' -Encoding UTF8
-.\.venv\Scripts\python.exe -m scielo_mvp.benchmark --config config.original.json --target 1000 --verify-only
+.venv/bin/python -m scielo_mvp.benchmark --config config.original.json --target 1000 --verify-only
 ```
 
 `config.original.json` está en `.gitignore`.
@@ -164,8 +243,8 @@ Varias funciones de `scielo_mvp` (limpieza de texto, códigos de idioma, `Retry-
 
 `manifest.sha256.json` registra las huellas de los módulos de `scielo_mvp` y de su perfil. Para comprobarlas:
 
-```powershell
-.\.venv\Scripts\python.exe -c "import json,hashlib,pathlib; m=json.loads(pathlib.Path('manifest.sha256.json').read_text(encoding='utf-8')); [print(f['file'], 'OK' if hashlib.sha256(pathlib.Path(f['file']).read_bytes()).hexdigest()==f['sha256'] else 'DIFERENTE') for f in m['files']]"
+```bash
+.venv/bin/python -c "import json,hashlib,pathlib; m=json.loads(pathlib.Path('manifest.sha256.json').read_text(encoding='utf-8')); [print(f['file'], 'OK' if hashlib.sha256(pathlib.Path(f['file']).read_bytes()).hexdigest()==f['sha256'] else 'DIFERENTE') for f in m['files']]"
 ```
 
 Si modificas un módulo, el manifiesto dejará de coincidir: regenéralo o indica el cambio.
@@ -176,11 +255,11 @@ Si modificas un módulo, el manifiesto dejará de coincidir: regenéralo o indic
 
 La documentación completa está en [`universidades_mvp/README.md`](universidades_mvp/README.md). La configuración y las diferencias entre repositorios están en [`config.universidades.json`](config.universidades.json). En resumen:
 
-```powershell
-.\.venv\Scripts\python.exe -m universidades_mvp.run --list                         # repositorios configurados
-.\.venv\Scripts\python.exe -m universidades_mvp.run --target 100                   # todos los habilitados
-.\.venv\Scripts\python.exe -m universidades_mvp.run --repos upch,unap --target 50  # solo algunos
-.\.venv\Scripts\python.exe -m universidades_mvp.run --target 100 --verify-only     # auditar sin red
+```bash
+.venv/bin/python -m universidades_mvp.run --list                         # repositorios configurados
+.venv/bin/python -m universidades_mvp.run --target 100                   # todos los habilitados
+.venv/bin/python -m universidades_mvp.run --repos upch,unap --target 50  # solo algunos
+.venv/bin/python -m universidades_mvp.run --target 100 --verify-only     # auditar sin red
 ```
 
 - **Repositorios:** se descargan con curl_cffi en UPCH, UNFV, UNMSM, PUCP, UNE, UNAP y UNICA, y con Selenium en La Molina, ESAN, UPN, UNCP, UNC, UNHEVAL y UPC. Las diferencias entre sitios están en `config.universidades.json`, no en el código.
@@ -197,9 +276,9 @@ La documentación completa está en [`universidades_mvp/README.md`](universidade
 
 ## Pruebas
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m pytest
+```bash
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pytest
 ```
 
 Son 16 pruebas, ninguna usa la red:
@@ -221,7 +300,8 @@ Son 16 pruebas, ninguna usa la red:
 | `Los filtros del catálogo cambiaron` / `La configuración de descubrimiento cambió` | La `data_dir` contiene una muestra con otros filtros; usa otra carpeta |
 | `status: blocked` | El sitio respondió 401/403/429 o mostró un desafío antibots; espera y repite el comando para reanudar |
 | `curl_cffi`: *"El nombre del archivo o la extensión es demasiado largo"* (Windows) | La ruta del `.venv` es muy larga; créalo en una ruta más corta |
-| `No se pudo iniciar Chrome con Selenium` | Instala Google Chrome; Selenium descarga su driver automáticamente |
+| `No se encontró Chrome/Chromium ejecutable` | Instala Google Chrome o Chromium; Selenium descarga el driver automáticamente |
+| `HTTP 403`, `desafío antibots` o timeout en `robots.txt` | El repositorio está bloqueando o no responde al rastreador; no se evade, reintenta más tarde |
 | Tildes mal mostradas al redirigir la salida | Ejecuta `$env:PYTHONUTF8 = '1'` antes del comando. Solo afecta a los mensajes; los archivos se escriben siempre en UTF-8 |
 
 ## Comprobaciones de esta entrega
@@ -230,6 +310,6 @@ Son 16 pruebas, ninguna usa la red:
 - **8 de octubre de 2026 (revisión del repositorio):**
   - Con Python 3.14, las huellas del manifiesto coinciden y pasan las 16 pruebas.
   - **SciELO:** una extracción real con `--target 2` terminó con `status: passed`, y su `--verify-only` también.
-  - **Tesis:** con `--target 2`, los 14 repositorios terminaron con `status: passed` (28 tesis en 26 minutos), y el `--verify-only` posterior también. Después se corrigieron UNHEVAL (clasificación de tesis) y la captura de PDF en los sitios con Selenium; la segunda prueba de esos sitios pasó, salvo UPC (HTTP 429), que quedó deshabilitado.
+  - **Tesis:** la disponibilidad de los 14 repositorios depende de sus respuestas actuales. Los sitios con Selenium requieren un navegador instalado; HTTP 403, desafíos antibots y timeouts de `robots.txt` son bloqueos externos y no se evaden.
 
 Estas comprobaciones verifican el código en esas fechas; no garantizan la disponibilidad futura de los portales.

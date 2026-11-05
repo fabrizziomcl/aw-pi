@@ -56,18 +56,25 @@ def write_rows(path, rows):
         if writer:
             writer.writeheader()
         for row in rows:
+            values = {k: dumps(v) if isinstance(v, (list, dict)) else v for k, v in row.items()}
             if writer:
-                writer.writerow(
-                    {k: dumps(v) if isinstance(v, (list, dict)) else v for k, v in row.items()}
-                )
+                writer.writerow(values)
             else:
                 stream.write(dumps(row) + "\n")
             count += 1
     return count
 
 
-def export_repo(store, valid_ids):
+def valid_rows(store, valid_ids, prefix=""):
     allowed = set(valid_ids)
+    return [
+        corpus_row(record, prefix)
+        for key, _, record in store.records("done", "filtered")
+        if key in allowed
+    ]
+
+
+def export_repo(store, valid_ids):
     outputs = {}
     with output_stream(store.root / "items.jsonl") as stream:
         count = 0
@@ -75,7 +82,7 @@ def export_repo(store, valid_ids):
             stream.write(dumps({"status": status, **record}) + "\n")
             count += 1
     outputs["items.jsonl"] = count
-    rows = [corpus_row(r) for key, _, r in store.records("done", "filtered") if key in allowed]
+    rows = valid_rows(store, valid_ids)
     for name in ("corpus.jsonl", "corpus.csv"):
         outputs[name] = write_rows(store.root / name, rows)
     LOG.info("Corpus de %s: %s tesis en %s", store.root.name, len(rows), store.root)
@@ -86,9 +93,7 @@ def export_combined(root, stores_and_ids):
     """Une los corpus de cada repositorio; raw_html_path queda relativo a data_dir."""
     rows = []
     for store, valid_ids in stores_and_ids:
-        allowed = set(valid_ids)
-        prefix = store.root.name + "/"
-        rows.extend(corpus_row(r, prefix) for key, _, r in store.records("done", "filtered") if key in allowed)
+        rows.extend(valid_rows(store, valid_ids, store.root.name + "/"))
     outputs = {name: write_rows(Path(root) / name, rows) for name in ("corpus.jsonl", "corpus.csv")}
     LOG.info("Corpus consolidado: %s tesis en %s", len(rows), Path(root).resolve())
     return outputs

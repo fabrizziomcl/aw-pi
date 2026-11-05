@@ -6,27 +6,54 @@ Un **solo comando** recorre los sitios. Las diferencias entre ellos se declaran 
 
 ## 1. Instalar
 
-Desde la raíz del repositorio, con Python 3.10 o superior y **Google Chrome** instalado (Selenium descarga su driver automáticamente):
+Desde la raíz del repositorio, con Python 3.10 o superior y **Google Chrome o Chromium** instalado (Selenium descarga su driver automáticamente):
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-universidades.txt
+.venv/bin/python -m universidades_mvp.run --list
+```
+
+En Ubuntu/Debian, instala Chrome estable así:
+
+```bash
+curl -fsSL -o /tmp/google-chrome-stable_current_amd64.deb \
+  https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt-get install -y /tmp/google-chrome-stable_current_amd64.deb
+google-chrome --version
+```
+
+En macOS instala Chrome con Homebrew:
+
+```bash
+brew install --cask google-chrome
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --version
+```
+
+En Windows, instala Chrome desde <https://www.google.com/chrome/> y comprueba:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-universidades.txt
-.\.venv\Scripts\python.exe -m universidades_mvp.run --list
+& "$env:ProgramFiles\Google\Chrome\Application\chrome.exe" --version
 ```
 
 > **Windows:** si `curl_cffi` falla con *"El nombre del archivo o la extensión es demasiado largo"*, la ruta del entorno virtual es muy larga. Crea el `.venv` en una ruta más corta.
 
+> **Linux/containers:** Selenium necesita un ejecutable real de Chrome/Chromium, no solo
+> un lanzador Snap. El programa usa opciones compatibles con contenedores
+> (`--no-sandbox` y `--disable-dev-shm-usage`) y falla inmediatamente con un mensaje claro
+> si no encuentra el navegador.
+
 ## 2. Ejecutar
 
-```powershell
+```bash
 # 100 tesis válidas por repositorio (por defecto), en los 13 sitios habilitados
-.\.venv\Scripts\python.exe -m universidades_mvp.run --target 100
+.venv/bin/python -m universidades_mvp.run --target 100
 
 # Solo algunos repositorios
-.\.venv\Scripts\python.exe -m universidades_mvp.run --repos upch,pucp,unap --target 50
+.venv/bin/python -m universidades_mvp.run --repos upch,pucp,unap --target 50
 
 # Auditar y volver a exportar sin usar la red
-.\.venv\Scripts\python.exe -m universidades_mvp.run --target 100 --verify-only
+.venv/bin/python -m universidades_mvp.run --target 100 --verify-only
 ```
 
 | Opción | Efecto |
@@ -114,6 +141,7 @@ Estados de la cola: `pending`, `done` (tesis válida), `filtered` (ficha guardad
 - **curl_cffi** se presenta como Chrome (`impersonate`). Ninguno de los 14 sitios lo exige; con `"impersonate": ""` se usa el cliente sin imitación.
 - **UPC está deshabilitado por defecto** (`"enabled": false`). En la prueba del 8 de octubre de 2026 respondió **HTTP 429 (Too Many Requests)** después de unas pocas fichas, aunque se respetaban sus 10 s entre fichas: cada ficha renderizada genera muchas solicitudes internas a `/server/api`, una ruta que además su robots.txt prohíbe a rastreadores. Solo se ejecuta si se pide explícitamente con `--repos upc`, y conviene hacerlo con objetivos pequeños.
 - **Errores 429/403/401 con Selenium:** como Selenium no expone el código HTTP, el programa reconoce esas páginas de error por su contenido y detiene el repositorio de inmediato (`blocked`), sin reintentar.
+- **Bloqueos externos:** un timeout en `robots.txt`, HTTP 403 o un desafío antibots no se puede corregir desde el extractor sin evadir las reglas del sitio; el repositorio queda en `error` o `blocked` y se puede reanudar más tarde.
 - **Datos personales:** se descartan DNI, ORCID y jurados (`renati.*`) aunque estén en la página. Se guardan nombres de autores y asesores porque forman parte de la referencia bibliográfica. El HTML original guardado en `raw/` sí los contiene: no lo compartas.
 - **PDF:** `pdf_url` puede quedar vacío. Las tesis con embargo no tienen PDF público, y PUCP no incluye enlaces de descarga en el HTML que entrega el servidor. Este paquete guarda el enlace, pero no descarga el PDF.
 - **Disponibilidad:** los sitios pueden cambiar de estructura. Si un repositorio deja de funcionar, revisa su `report.json` y prueba con `--target 2`.

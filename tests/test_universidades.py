@@ -6,9 +6,8 @@ from pathlib import Path
 from universidades_mvp import run as runner
 from universidades_mvp.config import Config
 from universidades_mvp.discovery import browse_items, sitemap_items
-from universidades_mvp.http import Blocked, Page, challenge, error_page
+from universidades_mvp.http import Blocked, Page, Robots, challenge, error_page
 from universidades_mvp.parsers import parse_item
-from universidades_mvp.robots import Robots
 from universidades_mvp.validation import qualification_errors
 
 PROFILE = Path(__file__).resolve().parents[1] / "config.universidades.json"

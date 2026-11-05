@@ -15,11 +15,10 @@ from pathlib import Path
 from scielo_mvp.parsers import ParseError
 from scielo_mvp.storage import now
 
-from .browser import Browser
 from .config import Config
 from .discovery import discover
 from .exports import export_combined, export_repo
-from .http import Blocked, Client, Disallowed, FetchError
+from .http import Blocked, Browser, BrowserUnavailable, Client, Disallowed, FetchError
 from .parsers import NotItem, identifier, parse_item
 from .storage import Store
 from .validation import audit, qualification_errors
@@ -87,6 +86,8 @@ def crawl(cfg, repo, store, client, browser, target):
             except Blocked as exc:
                 store.fail(row["id"], exc, "blocked")
                 raise
+            except BrowserUnavailable:
+                raise
             except (FetchError, ParseError) as exc:
                 store.fail(row["id"], exc)
                 LOG.error("%s: %s", repo.key, exc)
@@ -120,7 +121,7 @@ def run_repo(cfg, repo, target, client, browser, *, verify_only=False, rediscove
             status = crawl(cfg, repo, store, client, browser, target)
     except Blocked as exc:
         status, error = "blocked", str(exc)
-    except (FetchError, ParseError, ValueError, OSError, sqlite3.Error) as exc:
+    except (BrowserUnavailable, FetchError, ParseError, ValueError, OSError, sqlite3.Error) as exc:
         status, error = "error", str(exc)
     except KeyboardInterrupt:
         status, error = "interrupted", "Interrupción solicitada; se conserva el estado para reanudar"

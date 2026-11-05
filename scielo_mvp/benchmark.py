@@ -11,10 +11,9 @@ from dataclasses import replace
 from .config import Config, search_url
 from .exports import export_bundle
 from .http import Blocked, Client, FetchError
-from .pipeline import crawl, discover
+from .pipeline import check_settings, crawl, discover, exhausted
 from .storage import Store, now
-from .validation import audit as audit
-from .validation import count_ready as count_ready
+from .validation import audit, count_ready
 
 LOG = logging.getLogger("scielo")
 
@@ -28,8 +27,6 @@ def run(cfg, target=1000, *, verify_only=False):
     handler = None
     try:
         if cfg.discovery == "catalog":
-            from .catalog import check_settings
-
             check_settings(cfg, store)
         handler = logging.FileHandler(store.root / "test.log", encoding="utf-8")
         handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
@@ -63,8 +60,6 @@ def run(cfg, target=1000, *, verify_only=False):
                         crawl(replace(cfg, max_articles=min(25, target - ready)), store, client)
                     else:
                         if cfg.discovery == "catalog":
-                            from .catalog import exhausted
-
                             done = exhausted(cfg, store)
                         else:
                             done = store.search_state(cfg, search_url(cfg))["done"]
