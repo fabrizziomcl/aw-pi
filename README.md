@@ -1,315 +1,112 @@
-# Adquisición del corpus — SciELO Perú y repositorios universitarios peruanos
+# AW-PI
 
-Código de la Parte 1 (adquisición del corpus) del proyecto *Descubrimiento de Literatura Académica en América Latina* — Analítica Web, Universidad del Pacífico, Grupo 4.
+Extractor de abstracts y tesis para el proyecto de literatura académica.
+Ejecuta los comandos desde la raíz del repositorio.
 
-Contiene dos extractores, ambos basados en web scraping de HTML **sin API**:
+## 1. Instalar
 
-| Paquete | Fuente | Herramientas | Resultado |
-|---|---|---|---|
-| [`scielo_mvp/`](#a-scielo_mvp--artículos-de-scielo-perú) | SciELO Perú: 6 revistas de ingeniería y ciencias | `requests` + BeautifulSoup | 1.000 artículos en español con abstract |
-| [`universidades_mvp/`](#b-universidades_mvp--tesis-de-repositorios-universitarios) | 14 repositorios universitarios peruanos | curl_cffi + BeautifulSoup + Selenium | Tesis con resumen, autores, asesores, grado y enlace al PDF |
+Se recomienda Python 3.12. Python 3.14 no es compatible actualmente con
+`gensim`.
 
-Las etapas posteriores del informe, como embeddings, recomendación, tópicos y grafo, **no forman parte de este código**.
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pip install -r requirements-vectorizers.txt
+```
 
-## Estructura
+Para los repositorios que usan Selenium también se necesita Chrome o Chromium.
+
+## 2. Ejecutar el scraping
+
+### SciELO
+
+```bash
+.venv/bin/python -m scielo_mvp.benchmark \
+  --config config.peru-catalog.json \
+  --target 1000
+```
+
+Para una prueba rápida usa `--target 2`. La salida queda en
+`data/test-1000/peru-catalog/`.
+
+### Repositorios universitarios
+
+```bash
+.venv/bin/python -m universidades_mvp.run --target 100
+```
+
+Esto solicita 100 tesis válidas por cada repositorio habilitado. Para probar
+dos por repositorio usa `--target 2`. Para limitar el conjunto:
+
+```bash
+.venv/bin/python -m universidades_mvp.run \
+  --repos upch,unfv,unap \
+  --target 2
+```
+
+El programa respeta `robots.txt`, guarda el estado en SQLite y se puede
+reanudar repitiendo el mismo comando después de una interrupción. UPC está
+deshabilitado por defecto por sus respuestas HTTP 429.
+
+## 3. Vectorizar los abstracts
+
+Después del scraping, los dos corpus consolidados contienen una fila por
+documento:
 
 ```text
-aw-pi/
-├── scielo_mvp/                    # Artículos de SciELO (python -m scielo_mvp.benchmark)
-├── universidades_mvp/             # Tesis universitarias (python -m universidades_mvp.run); README propio
-├── tests/                         # Pruebas sin red de ambos paquetes
-├── config.peru-catalog.json       # Perfil de SciELO Perú: español, 6 revistas
-├── config.universidades.json      # Perfil de los 14 repositorios (13 habilitados)
-├── manifest.sha256.json           # Huellas SHA-256 de los módulos de scielo_mvp y su perfil
-├── requirements.txt               # Dependencias de scielo_mvp (versiones fijadas)
-├── requirements-universidades.txt # Lo anterior + curl_cffi y Selenium
-├── requirements-dev.txt           # Todo lo anterior + pytest
-└── pytest.ini
+data/test-1000/peru-catalog/corpus.jsonl
+data/universidades/corpus.jsonl
 ```
 
-`data/`, `.venv/` y las cachés están excluidas por `.gitignore`.
+`abstract` es el texto y `paper_id` permite relacionar cada vector con su
+documento original. Las funciones de [vectorizers.py](./vectorizers.py)
+reciben `list[list[str]]`, es decir, documentos ya tokenizados.
 
-## Inicio rápido
-
-Usa Python 3.10 o superior y ejecuta todos los comandos **desde la raíz del repositorio**
-(`aw-pi`). Las rutas de `data_dir` son relativas al directorio actual. Primero crea el
-entorno e instala las dependencias; si se omite este paso, los módulos no funcionarán.
-
-### Linux/macOS
+Para vectorizar todos los papers juntos ejecuta:
 
 ```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements-universidades.txt  # sirve para ambos paquetes
-.venv/bin/python --version
+.venv/bin/python vectorize_data.py
 ```
 
-Para ejecutar repositorios que usan Selenium, instala un navegador **real** (un lanzador
-Snap no es suficiente).
+El comando combina SciELO y universidades, elimina automáticamente las filas
+repetidas por `paper_id` o por abstract exactamente igual, y recién después
+entrena los modelos. Genera
+únicamente en `data/`:
 
-En Ubuntu/Debian:
+```text
+data/vectorizations.tfidf.jsonl
+data/vectorizations.tfidf.metadata.json
+data/vectorizations.doc2vec.jsonl
+```
+
+Ejemplo equivalente en Python:
+
+```python
+import json
+import re
+from pathlib import Path
+
+from vectorizers import vectorize_corpora
+
+vectorize_corpora(
+    [
+        "data/test-1000/peru-catalog/corpus.jsonl",
+        "data/universidades/corpus.jsonl",
+    ],
+    output_dir="data",
+)
+```
+
+No ejecutes la vectorización sobre los `corpus.jsonl` de cada subdirectorio:
+son subconjuntos de los dos corpus consolidados y producirían archivos
+duplicados. La deduplicación se hace por `paper_id` o por el texto exacto del
+abstract; se conserva la primera aparición. En corpus pequeños se usa
+`min_count=1`; para corpus grandes puede subirse ese valor.
+
+## 4. Comprobar el proyecto
 
 ```bash
-curl -fsSL -o /tmp/google-chrome-stable_current_amd64.deb \
-  https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-sudo apt-get install -y /tmp/google-chrome-stable_current_amd64.deb
-google-chrome --version
+.venv/bin/python -m pytest -q
 ```
 
-En macOS:
-
-```bash
-brew install --cask google-chrome
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --version
-```
-
-Comprueba que Selenium puede abrir el navegador antes de iniciar una extracción:
-
-```bash
-.venv/bin/python - <<'PY'
-from selenium import webdriver
-
-options = webdriver.ChromeOptions()
-options.add_argument("--headless=new")
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-dev-shm-usage")
-options.add_argument("--disable-gpu")
-driver = webdriver.Chrome(options=options)
-print("Selenium OK:", driver.capabilities["browserVersion"])
-driver.quit()
-PY
-```
-
-Después puedes ejecutar:
-
-```bash
-
-# SciELO: prueba rápida
-.venv/bin/python -m scielo_mvp.benchmark --config config.peru-catalog.json --target 5
-
-# Tesis: 100 por repositorio habilitado
-.venv/bin/python -m universidades_mvp.run --target 100
-
-# Pruebas sin red
-.venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python -m pytest
-```
-
-### Windows (PowerShell)
-
-```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-universidades.txt
-.\.venv\Scripts\python.exe --version
-```
-
-En Windows, instala Google Chrome desde
-<https://www.google.com/chrome/> y comprueba:
-
-```powershell
-& "$env:ProgramFiles\Google\Chrome\Application\chrome.exe" --version
-```
-
-Después puedes ejecutar:
-
-```powershell
-
-# SciELO: prueba rápida
-.\.venv\Scripts\python.exe -m scielo_mvp.benchmark --config config.peru-catalog.json --target 5
-
-# Tesis: 100 por repositorio habilitado
-.\.venv\Scripts\python.exe -m universidades_mvp.run --target 100
-
-# Pruebas sin red
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m pytest
-```
-
-Para obtener la muestra completa de SciELO, cambia `--target 5` por `--target 1000`.
-Si solo necesitas SciELO, instala `requirements.txt` en lugar de
-`requirements-universidades.txt`. Para probar los 14 repositorios debes indicar
-`--repos ...` porque UPC está deshabilitado por defecto.
-
-Los dos extractores comparten el mismo comportamiento:
-- se pueden **reanudar**: tras `Ctrl+C`, repite el comando;
-- el **objetivo es acumulativo**;
-- terminan con **código `0`** solo si alcanzan el objetivo y con `2` en cualquier otro caso (la causa queda en el informe JSON);
-- tienen un modo **`--verify-only`** que audita las huellas SHA-256 y exporta sin usar la red.
-
----
-
-## A. `scielo_mvp` — artículos de SciELO Perú
-
-El flujo es **catálogo → revistas → números → artículos → HTML y metadatos → auditoría → CSV/JSONL**.
-
-### A.1 Generar una muestra de 1.000 registros
-
-```bash
-.venv/bin/python -m scielo_mvp.benchmark --config config.peru-catalog.json --target 1000
-```
-
-La salida se escribe en **`data/test-1000/peru-catalog/`**. Cada artículo y cada página del catálogo es una solicitud, con al menos 1 segundo de pausa entre ellas: una ejecución completa suele tardar entre media hora y más de una hora, según la respuesta del portal.
-
-- **Reanudar:** después de `Ctrl+C` o de un error, repite el mismo comando. Se conservan la cola y los documentos guardados.
-- **Objetivo acumulativo:** si ya hay 1.000 válidos, solo audita y exporta, sin volver a descargar.
-- **Prueba rápida:** `--target 5` recorre el mismo flujo con pocos artículos. Usa otra `data_dir` si no quieres mezclarla con la muestra principal.
-- No ejecutes dos procesos sobre la misma carpeta de salida.
-
-No se garantiza obtener los mismos documentos en una nueva ejecución: el portal puede cambiar, agotarse o bloquear solicitudes.
-
-### A.2 Verificar y exportar sin usar la red
-
-```bash
-.venv/bin/python -m scielo_mvp.benchmark --config config.peru-catalog.json --target 1000 --verify-only
-```
-
-El resultado esperado es `status: passed`, `counts.valid_records >= 1000`, `integrity_errors: []` y código de salida `0`. La auditoría comprueba, para cada registro: HTTP 200 registrado, título, identidad, idioma de publicación, abstract compatible con el filtro y HTML conservado con SHA-256 correcto. Los artículos sin abstract y las importaciones locales no cuentan.
-
-`--verify-only` no solicita páginas ni modifica `scielo.sqlite3`. Sí escribe `verification.json`, `verification.config.json`, las exportaciones y una entrada en `test.log`. Si la carpeta no contiene una base, termina con código `2` sin crear nada.
-
-**Auditar una muestra existente en otra carpeta.** La muestra original de 1.000 documentos **no se incluye en esta entrega**. Si tienes una copia, colócala en `data/test-1000/peru-catalog/` o crea un perfil que apunte a su ubicación:
-
-```powershell
-$cfg = Get-Content 'config.peru-catalog.json' -Raw | ConvertFrom-Json
-$cfg.data_dir = 'C:/ruta/a/peru-catalog'
-$cfg | ConvertTo-Json -Depth 10 | Set-Content 'config.original.json' -Encoding UTF8
-.venv/bin/python -m scielo_mvp.benchmark --config config.original.json --target 1000 --verify-only
-```
-
-`config.original.json` está en `.gitignore`.
-
-### A.3 Archivos generados
-
-| Archivo | Contenido |
-|---|---|
-| `corpus.csv` | Una fila por documento validado: ID, título, abstract, autores y enlaces. UTF-8 con BOM (se abre directamente en Excel) |
-| `corpus.jsonl` | El mismo corpus para procesamiento; `paper_id` enlaza con los metadatos |
-| `articles.jsonl` | Registros completos aceptados, incluidos los que no tienen abstract |
-| `abstracts.jsonl`, `abstracts.es.jsonl` | Versiones de los abstracts; puede haber varias por paper |
-| `scielo.sqlite3` | Registros, cola y estado para reanudar |
-| `raw/catalog/`, `raw/articles/` | HTML original comprimido como `.html.gz` |
-| `report.json`, `verification.json` | Resultado de la extracción o de la auditoría |
-| `config.snapshot.json`, `run.config.json`, `verification.config.json` | Configuración de la primera extracción, de la última extracción y de la última auditoría |
-| `test.log` | Historial de ejecución |
-
-Se guardan **enlaces** PDF/XML cuando aparecen en la página; este paquete no descarga esos archivos.
-
-### A.4 Configuración
-
-`config.peru-catalog.json` define la muestra: colección Perú (`per`), artículos en español y cualquier año, en seis revistas seleccionadas por ISSN:
-
-| Revista | ISSN |
-|---|---|
-| Industrial Data | `1810-9993` |
-| Ingeniería Industrial | `2523-6326` |
-| Tecnia | `2309-0413` |
-| Revista de la Sociedad Química del Perú | `1810-634X` |
-| Biblios | `1562-4730` |
-| Ecología Aplicada | `1726-2216` |
-
-| Parámetro | Valor | Efecto |
-|---|---|---|
-| `discovery` | `catalog` | Recorre catálogo → revistas → números → artículos (`search` usa el buscador central) |
-| `catalog_journals` | 6 ISSN | `[]` recorre todas las revistas del catálogo |
-| `languages` | `["es"]` | `[]` elimina el filtro de idioma |
-| `years` | `[]` | Admite todos los años; por ejemplo `["2024", "2025"]` |
-| `delay_seconds`, `timeout_seconds`, `retries` | `1`, `40`, `2` | Pausa entre solicitudes, tiempo de espera y reintentos |
-| `max_pages`, `max_articles` | `5`, `25` | Tamaño de los lotes internos; el total lo controla `--target` |
-| `robots_policy` | `report` | Registra las restricciones de robots.txt y continúa; `respect` las aplica |
-| `data_dir` | `data/test-1000/peru-catalog` | Carpeta de salida |
-
-En modo catálogo, `query`, `wos_areas`, `scielo_areas` y `document_types` deben quedar vacíos: la selección por revistas **no equivale a las facetas de áreas WoS** del buscador central.
-
-Si cambias los filtros, usa otra `data_dir`: el programa rechaza mezclar muestras con filtros distintos. La única excepción es añadir revistas a `catalog_journals`, que amplía la muestra conservando los registros previos.
-
-`robots_policy: report` se conserva por reproducibilidad del perfil histórico y no implica autorización del portal. Los bloqueos HTTP 401/403/429 se informan como tales, sin mecanismos de evasión. Para un uso distinto del académico, se recomienda `respect`.
-
-### A.5 Módulos
-
-| Módulo | Responsabilidad |
-|---|---|
-| `benchmark.py` | Punto de entrada, bucle reanudable, informes y objetivo de N registros |
-| `config.py` | Lectura y validación de parámetros |
-| `catalog.py` | Navegación de revistas, números y enlaces a artículos |
-| `http.py` | Peticiones, pausas, reintentos, robots.txt y detección de bloqueos |
-| `pipeline.py` | Descubrimiento, extracción y persistencia de artículos |
-| `parsers.py` | Interpretación del HTML: abstracts, metadatos e identidad |
-| `storage.py` | SQLite, cola, HTML comprimido y trazabilidad |
-| `validation.py` | Criterios de aceptación y auditoría de integridad |
-| `exports.py` | Exportación de corpus y metadatos |
-
-Varias funciones de `scielo_mvp` (limpieza de texto, códigos de idioma, `Retry-After`, escritura atómica) también las usa `universidades_mvp`.
-
-### A.6 Manifiesto
-
-`manifest.sha256.json` registra las huellas de los módulos de `scielo_mvp` y de su perfil. Para comprobarlas:
-
-```bash
-.venv/bin/python -c "import json,hashlib,pathlib; m=json.loads(pathlib.Path('manifest.sha256.json').read_text(encoding='utf-8')); [print(f['file'], 'OK' if hashlib.sha256(pathlib.Path(f['file']).read_bytes()).hexdigest()==f['sha256'] else 'DIFERENTE') for f in m['files']]"
-```
-
-Si modificas un módulo, el manifiesto dejará de coincidir: regenéralo o indica el cambio.
-
----
-
-## B. `universidades_mvp` — tesis de repositorios universitarios
-
-La documentación completa está en [`universidades_mvp/README.md`](universidades_mvp/README.md). La configuración y las diferencias entre repositorios están en [`config.universidades.json`](config.universidades.json). En resumen:
-
-```bash
-.venv/bin/python -m universidades_mvp.run --list                         # repositorios configurados
-.venv/bin/python -m universidades_mvp.run --target 100                   # todos los habilitados
-.venv/bin/python -m universidades_mvp.run --repos upch,unap --target 50  # solo algunos
-.venv/bin/python -m universidades_mvp.run --target 100 --verify-only     # auditar sin red
-```
-
-- **Repositorios:** se descargan con curl_cffi en UPCH, UNFV, UNMSM, PUCP, UNE, UNAP y UNICA, y con Selenium en La Molina, ESAN, UPN, UNCP, UNC, UNHEVAL y UPC. Las diferencias entre sitios están en `config.universidades.json`, no en el código.
-- **Solo tesis:** se clasifican por `dc.type`, `renati.type` o el grado. Se descartan artículos, sílabos y monografías, y el motivo queda en `items.jsonl`.
-- **Salida:** `data/universidades/corpus.csv` y `corpus.jsonl` consolidados, más un corpus, un `report.json` y la auditoría SHA-256 de cada repositorio.
-- **UPC está deshabilitado por defecto:** respondió HTTP 429 (Too Many Requests) a las fichas renderizadas. Solo se ejecuta con `--repos upc`.
-- **Uso responsable:**
-  - robots.txt se respeta siempre, con comodines y `Crawl-delay` (UPCH y UNE piden 10 s entre solicitudes);
-  - un desafío antibots o un 401/403/429 detiene el repositorio, sin evasión;
-  - se descartan DNI, ORCID y jurados.
-  - El HTML guardado en `raw/` sí conserva esos datos: **no lo compartas**.
-
----
-
-## Pruebas
-
-```bash
-.venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python -m pytest
-```
-
-Son 16 pruebas, ninguna usa la red:
-- **`tests/test_benchmark.py` (4, SciELO):** carga del perfil, auditoría que excluye importaciones locales y detecta HTML alterado, ejecución bloqueada no reportada como aprobada y `--verify-only` sin crear carpetas.
-- **`tests/test_universidades.py` (12, tesis):**
-  - robots.txt con comodines;
-  - las fuentes de metadatos y el descarte de DNI;
-  - la clasificación de tesis;
-  - el descubrimiento por sitemap e índice;
-  - las páginas de error y bloqueos;
-  - una ejecución completa con auditoría.
-
-## Problemas frecuentes
-
-| Síntoma | Causa y solución |
-|---|---|
-| `No module named scielo_mvp` / `universidades_mvp` | El comando no se ejecutó desde la raíz del repositorio |
-| `No existe una base para verificar` | `--verify-only` apunta a una `data_dir` sin base SQLite; ejecuta antes una extracción o corrige `data_dir` |
-| `Los filtros del catálogo cambiaron` / `La configuración de descubrimiento cambió` | La `data_dir` contiene una muestra con otros filtros; usa otra carpeta |
-| `status: blocked` | El sitio respondió 401/403/429 o mostró un desafío antibots; espera y repite el comando para reanudar |
-| `curl_cffi`: *"El nombre del archivo o la extensión es demasiado largo"* (Windows) | La ruta del `.venv` es muy larga; créalo en una ruta más corta |
-| `No se encontró Chrome/Chromium ejecutable` | Instala Google Chrome o Chromium; Selenium descarga el driver automáticamente |
-| `HTTP 403`, `desafío antibots` o timeout en `robots.txt` | El repositorio está bloqueando o no responde al rastreador; no se evade, reintenta más tarde |
-| Tildes mal mostradas al redirigir la salida | Ejecuta `$env:PYTHONUTF8 = '1'` antes del comando. Solo afecta a los mensajes; los archivos se escriben siempre en UTF-8 |
-
-## Comprobaciones de esta entrega
-
-- **22 de septiembre de 2026 (SciELO, paquete original):** los módulos y el perfil coincidían por SHA-256 con sus fuentes. La auditoría de solo lectura de la muestra original encontró **1.000 documentos válidos**, 1.068 HTML íntegros y **cero errores de integridad**. Esa muestra no se incluye en esta carpeta.
-- **8 de octubre de 2026 (revisión del repositorio):**
-  - Con Python 3.14, las huellas del manifiesto coinciden y pasan las 16 pruebas.
-  - **SciELO:** una extracción real con `--target 2` terminó con `status: passed`, y su `--verify-only` también.
-  - **Tesis:** la disponibilidad de los 14 repositorios depende de sus respuestas actuales. Los sitios con Selenium requieren un navegador instalado; HTTP 403, desafíos antibots y timeouts de `robots.txt` son bloqueos externos y no se evaden.
-
-Estas comprobaciones verifican el código en esas fechas; no garantizan la disponibilidad futura de los portales.
+Los archivos de `data/` son salidas locales y están excluidos de Git.
