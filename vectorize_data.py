@@ -6,8 +6,8 @@ from vectorizers import vectorize_corpora
 if __name__ == "__main__":
     count, duplicates = vectorize_corpora(
         [
-            "data/test-1000/peru-catalog/corpus.jsonl",
-            "data/universidades/corpus.jsonl",
+            "data/scielo_simple/corpus.jsonl",
+            "data/universidades_simple/corpus.jsonl",
         ]
     )
     print(

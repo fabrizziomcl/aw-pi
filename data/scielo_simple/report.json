@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "target": 2,
+  "error": null,
+  "finished_at": "2026-11-15T06:59:18.332811+00:00",
+  "counts": {
+    "valid_records": 2,
+    "ok": 2
+  }
+}

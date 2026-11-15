@@ -37,17 +37,6 @@
       "item_suffix": "?show=full"
     },
     {
-      "key": "pucp",
-      "name": "Pontificia Universidad Católica del Perú",
-      "base_url": "https://repositorio.pucp.edu.pe",
-      "sitemap": "/server/sitemaps/sitemap_index.xml"
-    },
-    {
-      "key": "une",
-      "name": "Universidad Nacional de Educación Enrique Guzmán y Valle",
-      "base_url": "https://repositorio.une.edu.pe"
-    },
-    {
       "key": "unap",
       "name": "Universidad Nacional del Altiplano",
       "base_url": "https://repositorio.unap.edu.pe"
