@@ -1,0 +1,16 @@
+{
+  "repo": "uncp",
+  "university": "Universidad Nacional del Centro del Perú",
+  "status": "passed",
+  "error": null,
+  "target": 1000,
+  "finished_at": "2026-11-15T20:01:31.430296+00:00",
+  "counts": {
+    "valid_theses": 1000,
+    "ok": 1000,
+    "filtrado": 3
+  },
+  "exclusion_reasons": {
+    "not_thesis": 3
+  }
+}
