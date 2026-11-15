@@ -1,6 +1,4 @@
 docs/
-AGENTS.md
-universidades.md
 .env
 .venv/
 __pycache__/
