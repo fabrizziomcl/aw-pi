@@ -150,3 +150,34 @@ def test_cambiar_filtros_se_rechaza_pero_ampliar_revistas_se_permite(sitio, monk
     monkeypatch.setattr(scielo, "REVISTAS", [OTHER_JOURNAL])
     with pytest.raises(ValueError):
         scielo.cargar_estado()
+
+
+def arttext(revista, n):
+    return link("sci_arttext", f"S{revista}2020000100{n:03d}")
+
+
+def test_siguiente_alterna_revistas_y_respeta_el_tope(monkeypatch):
+    estado = {"pendientes": {}, "articulos": [[arttext("1111-1111", n), "x"] for n in range(5)]
+              + [[arttext("2222-2222", n), "x"] for n in range(5)]}
+    hechos = [{"url": arttext("1111-1111", n), "status": "ok"} for n in range(3)]
+    ids = {scielo.identidad(r["url"])[0] for r in hechos}
+    monkeypatch.setattr(scielo, "MAX_POR_REVISTA", 3)
+    # la primera ya llegó al tope: se sigue con la segunda
+    accion, (url, _) = scielo.siguiente(estado, hechos, ids)
+    assert accion == "articulo" and scielo.revista_de(url) == "2222-2222"
+    # sin tope, gana la que tiene menos válidos
+    monkeypatch.setattr(scielo, "MAX_POR_REVISTA", None)
+    accion, (url, _) = scielo.siguiente(estado, hechos, ids)
+    assert scielo.revista_de(url) == "2222-2222"
+
+
+def test_siguiente_abandona_revistas_sin_exito_y_expande_numeros_pendientes(monkeypatch):
+    hechos = [{"url": arttext("3333-3333", n), "status": "filtrado"} for n in range(scielo.MIN_EXITO)]
+    ids = {scielo.identidad(r["url"])[0] for r in hechos}
+    estado = {"pendientes": {link("sci_issuetoc", "4444-444420200001"): 3},
+              "articulos": [[arttext("3333-3333", 99), "x"]]}
+    # la revista 3333 no produjo ningún válido: se abandona y se abre un número de la 4444
+    accion, url = scielo.siguiente(estado, hechos, ids)
+    assert accion == "expandir" and scielo.revista_de(url) == "4444-4444"
+    estado["pendientes"] = {}
+    assert scielo.siguiente(estado, hechos, ids) is None

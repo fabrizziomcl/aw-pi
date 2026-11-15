@@ -12,9 +12,24 @@ from comun import (agregar_jsonl, ahora, cargar_json, es_bloqueo, escribir_corpu
 
 BASE = 'https://www.scielo.org.pe/scielo.php'
 CATALOGO = BASE + '?script=sci_alphabetic&lng=es&nrm=iso'
-REVISTAS = ['1810-9993', '2523-6326', '2309-0413', '1810-634X', '1562-4730', '1726-2216']
+REVISTAS = [
+    # ingeniería, química y ecología: Industrial Data, Ingeniería Industrial, Tecnia, Soc. Química del Perú, Ecología Aplicada
+    '1810-9993', '2523-6326', '2309-0413', '1810-634X', '1726-2216',
+    # medicina: Rev. Peruana de Medicina Experimental y Salud Pública, Acta Médica Peruana, Anales de la Fac. de Medicina, Rev. Médica Herediana
+    '1726-4634', '1728-5917', '1025-5583', '1018-130X',
+    # psicología y educación: Educación, Rev. de Psicología (PUCP), Liberabit, Propósitos y Representaciones
+    '1019-9403', '0254-9247', '1729-4827', '2307-7999',
+    # derecho y política (solo hay 3 en el catálogo): Derecho PUCP, Rev. Oficial del Poder Judicial, Rev. Elecciones
+    '0251-3420', '2663-9130', '1995-6290',
+    # humanidades y ciencias sociales: Allpanchis, Anthropologica, Lexis, Debates en Sociología, Biblios
+    '2708-8960', '0254-9212', '0254-9239', '2304-4284', '1562-4730',
+    # economía y gestión: Quipukamayoc, Rev. de Ciencias de la Gestión, Semestre Económico, Journal of Economics, Finance and Administrative Science
+    '1609-8196', '2518-0495', '2072-0572', '2077-1886',
+]
 IDIOMAS = ['es']
 ANIOS = []
+MAX_POR_REVISTA = 400  # tope de artículos válidos por revista, para que pocas no dominen el corpus (None = sin tope)
+MIN_EXITO = 30  # una revista sin ningún artículo válido tras revisar tantos se abandona (p. ej. revistas en inglés)
 CARPETA = 'data/scielo_simple'
 UA = 'SciELO-MVP/0.1 (small research crawler)'
 PAUSA = 1
@@ -319,8 +334,41 @@ def cargar_estado():
     return estado
 
 
-def expandir(estado):
-    url = min(estado['pendientes'], key=estado['pendientes'].get)
+def revista_de(url):
+    consulta = parse_qs(urlsplit(url).query)
+    pid = consulta.get('pid', [''])[0]
+    return pid[1:10] if consulta.get('script') == ['sci_arttext'] else pid[:9]
+
+
+def siguiente(estado, hechos, ids):
+    # catálogo, revistas y listas de números primero: son pocas páginas y dan acceso a todas las revistas
+    general = [u for u, p in estado['pendientes'].items() if p < PRIORIDAD['sci_issuetoc']]
+    if general:
+        return 'expandir', min(general, key=estado['pendientes'].get)
+    validos, intentos = {}, {}
+    for r in hechos:
+        rev = revista_de(r['url'])
+        intentos[rev] = intentos.get(rev, 0) + 1
+        validos[rev] = validos.get(rev, 0) + (r['status'] == 'ok')
+    articulos, numeros = {}, {}
+    for u, o in estado['articulos']:
+        if identidad(u)[0] not in ids:
+            articulos.setdefault(revista_de(u), (u, o))
+    for u in estado['pendientes']:
+        numeros.setdefault(revista_de(u), u)
+    candidatas = [r for r in set(articulos) | set(numeros)
+                  if not (MAX_POR_REVISTA and validos.get(r, 0) >= MAX_POR_REVISTA)
+                  and not (intentos.get(r, 0) >= MIN_EXITO and not validos.get(r, 0))]
+    if not candidatas:
+        return None
+    # se trabaja siempre en la revista con menos artículos válidos: el corpus crece parejo
+    r = min(candidatas, key=lambda r: (validos.get(r, 0), intentos.get(r, 0), r))
+    if r in articulos:
+        return 'articulo', articulos[r]
+    return 'expandir', numeros[r]
+
+
+def expandir(estado, url):
     r = descargar(url)
     soup = sopa(r.content)
     enlaces = [url_catalogo(a['href'], r.url) for a in soup.select('a[href]')]
@@ -360,23 +408,24 @@ def ejecutar(objetivo=1000):
         ids = {a['id'] for a in hechos}
         validos = sum(a['status'] == 'ok' for a in hechos)
         while validos < objetivo:
-            siguiente = next(((u, o) for u, o in estado['articulos'] if identidad(u)[0] not in ids), None)
-            if siguiente:
-                url, origen = siguiente
-                try:
-                    reg = procesar(url, origen)
-                except (ConnectionError, ValueError) as e:
-                    reg = {'id': identidad(url)[0], 'url': url, 'status': 'error', 'error': str(e)}
-                    print(f'Error en {url}: {e}')
-                agregar_jsonl(ruta, reg)
-                ids.add(reg['id'])
-                validos += reg['status'] == 'ok'
-                print(f'Progreso: {validos} artículos válidos / {objetivo}')
-            elif estado['pendientes']:
-                expandir(estado)
-            else:
+            paso = siguiente(estado, hechos, ids)
+            if not paso:
                 final = 'exhausted'
                 break
+            if paso[0] == 'expandir':
+                expandir(estado, paso[1])
+                continue
+            url, origen = paso[1]
+            try:
+                reg = procesar(url, origen)
+            except (ConnectionError, ValueError) as e:
+                reg = {'id': identidad(url)[0], 'url': url, 'status': 'error', 'error': str(e)}
+                print(f'Error en {url}: {e}')
+            agregar_jsonl(ruta, reg)
+            hechos.append(reg)
+            ids.add(reg['id'])
+            validos += reg['status'] == 'ok'
+            print(f'Progreso: {validos} artículos válidos / {objetivo}')
     except PermissionError as e:
         final, error = 'blocked', str(e)
     except (OSError, ValueError) as e:
@@ -394,9 +443,15 @@ def ejecutar(objetivo=1000):
     conteo = {}
     for r in registros:
         conteo[r['status']] = conteo.get(r['status'], 0) + 1
+    por_revista = {}
+    for r in registros:
+        if r['status'] == 'ok':
+            rev = revista_de(r['url'])
+            por_revista[rev] = por_revista.get(rev, 0) + 1
     guardar_json(CARPETA + '/report.json', {
         'status': final, 'target': objetivo, 'error': error, 'finished_at': ahora(),
         'counts': {'valid_records': len(filas), **conteo},
+        'valid_by_journal': dict(sorted(por_revista.items())),
     })
     print(f'Resultado: {final}; válidos={len(filas)}/{objetivo}; informe={CARPETA}/report.json')
     return 0 if final == 'passed' else 2

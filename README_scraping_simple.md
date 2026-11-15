@@ -48,10 +48,40 @@ El número es el **objetivo de artículos válidos** (por defecto 1000). Para un
 
 ### Qué hace
 
-1. Parte de la página alfabética de revistas de SciELO Perú y baja por revista → números → artículos.
+1. Parte de la página alfabética de revistas de SciELO Perú y baja por revista → números → artículos. Primero lee el catálogo, las revistas y sus listas de números; después trabaja siempre en la revista con menos artículos válidos, así el corpus crece parejo entre revistas.
 2. Descarga cada artículo y extrae título, autores, DOI, revista, año, idiomas, resumen y enlaces PDF y XML.
 3. Un artículo es **válido** si su idioma coincide con `IDIOMAS` y tiene resumen en esos idiomas. Los demás quedan como `filtrado`.
 4. Se detiene al llegar al objetivo, al agotar el catálogo o ante un bloqueo.
+
+### Revistas incluidas
+
+`REVISTAS` tiene 25 revistas, unas 4 por tema:
+
+| Tema | Revistas (ISSN) |
+|---|---|
+| Ingeniería y ciencias | Industrial Data (1810-9993), Ingeniería Industrial (2523-6326), Tecnia (2309-0413), Revista de la Sociedad Química del Perú (1810-634X), Ecología Aplicada (1726-2216) |
+| Medicina | Revista Peruana de Medicina Experimental y Salud Pública (1726-4634), Acta Médica Peruana (1728-5917), Anales de la Facultad de Medicina (1025-5583), Revista Médica Herediana (1018-130X) |
+| Psicología y educación | Educación (1019-9403), Revista de Psicología PUCP (0254-9247), Liberabit (1729-4827), Propósitos y Representaciones (2307-7999) |
+| Derecho y política | Derecho PUCP (0251-3420), Revista Oficial del Poder Judicial (2663-9130), Revista Elecciones (1995-6290) |
+| Humanidades y ciencias sociales | Allpanchis (2708-8960), Anthropologica (0254-9212), Lexis (0254-9239), Debates en Sociología (2304-4284), Biblios (1562-4730) |
+| Economía y gestión | Quipukamayoc (1609-8196), Revista de Ciencias de la Gestión (2518-0495), Semestre Económico (2072-0572), Journal of Economics, Finance and Administrative Science (2077-1886) |
+
+El catálogo de SciELO Perú tiene 61 revistas. Derecho solo tiene 3 en el catálogo. La selección se hizo por el título de cada revista, sin medir su volumen real de artículos en español. Si quieres otras, cambia sus ISSN en `REVISTAS`.
+
+### Cómo se reparte entre revistas
+
+Para que pocas revistas no dominen el corpus:
+
+1. El script lee primero el catálogo, las revistas y sus listas de números (unas cuantas páginas por revista).
+2. Después trabaja siempre en la **revista con menos artículos válidos**, así que el corpus crece parejo entre las 25.
+3. `MAX_POR_REVISTA` (80) pone un tope por revista. Con 1000 artículos, el promedio es 40 por revista.
+4. `MIN_EXITO` (30) abandona una revista que, tras revisar 30 artículos, no dio ninguno válido (por ejemplo, una revista en inglés).
+5. Si una revista tiene pocos artículos en español, queda por debajo de su cuota y las demás compensan hasta el tope.
+6. `report.json` trae `valid_by_journal`, con los válidos por revista, para comprobar el reparto.
+
+Dentro de cada revista toma los números en el orden en que aparecen en la página, que probablemente es el más reciente primero. La muestra tenderá a los años recientes. Con `ANIOS` puedes acotar el rango.
+
+Si ya tienes una carpeta `data/scielo_simple` de una corrida con otras revistas, sus artículos siguen contando. Para una corrida limpia, bórrala o usa otra carpeta.
 
 ### Cómo ajustarlo
 
@@ -59,7 +89,9 @@ Edita las constantes al inicio de [scielo.py](scraping_simple/scielo.py):
 
 | Constante | Efecto |
 |---|---|
-| `REVISTAS` | Lista de ISSN. `[]` recorre todas las revistas del catálogo. |
+| `REVISTAS` | Lista de ISSN (25 revistas, unas 4 por tema: ingeniería y ciencias, medicina, psicología y educación, derecho, humanidades y ciencias sociales, economía y gestión). `[]` recorre las 61 del catálogo. |
+| `MAX_POR_REVISTA` | Tope de artículos válidos por revista (80). `None` quita el tope. |
+| `MIN_EXITO` | Una revista sin ningún artículo válido tras revisar 30 se abandona (por ejemplo, si está en inglés). |
 | `IDIOMAS` | `['es']` por defecto. `[]` quita el filtro de idioma. |
 | `ANIOS` | Lista de años. `[]` no limita. |
 | `CARPETA` | Dónde se guarda todo (`data/scielo_simple`). |
@@ -112,6 +144,13 @@ python scraping_simple/universidades.py --repos upch,unfv,unap --target 2
 6. Pasa al siguiente repositorio al llegar al objetivo o al agotar el sitio.
 
 No hay búsqueda por tema: se toma una muestra de todas las tesis del repositorio.
+
+### Cómo se reparte entre repositorios
+
+El reparto es más simple que en SciELO:
+
+- **Entre repositorios.** Los recorre uno por uno, en el orden del archivo de configuración, y cada uno recibe el mismo objetivo (`--target`). No se rebalancea durante la corrida. Si un repositorio se agota antes, el resto no compensa la diferencia.
+- **Dentro de un repositorio.** No reparte por facultad, colección, año ni grado. Ordena todas sus fichas con un hash con semilla (`sample_seed`) y las toma en ese orden, así que es una muestra pseudoaleatoria de todo el sitio, proporcional a lo que tenga cada categoría.
 
 ### Repositorios
 
