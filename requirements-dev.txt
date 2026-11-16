@@ -1,2 +1,0 @@
--r requirements-universidades.txt
-pytest
