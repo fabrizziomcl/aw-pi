@@ -30,7 +30,7 @@ MUI = {'autor(es)': 'dc.contributor.author', 'fecha de publicación': 'dc.date.i
 TESIS = re.compile(r'thesis|tesis|suficiencia|trabajos? ?(de ?investigaci|acad)|segunda especialidad|/c_(7a1f|bdcc|db06|46ec)', re.I)
 UUID = re.compile(r'[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}')
 
-navegador = {'driver': None}
+navegador = {'driver': None, 'paginas': 0}
 
 
 def cargar_repos():
@@ -79,6 +79,11 @@ def abrir(url, repo):
     if not puede(url):
         return None
     esperar(url)
+    # Chrome acumula memoria página tras página (varios GB por hora): se reinicia cada 50 fichas
+    navegador['paginas'] += 1
+    if navegador['driver'] and navegador['paginas'] % 50 == 0:
+        navegador['driver'].quit()
+        navegador['driver'] = None
     if navegador['driver'] is None:
         opciones = webdriver.ChromeOptions()
         opciones.add_argument('--headless=new')

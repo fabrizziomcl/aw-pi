@@ -139,7 +139,8 @@ def leer_jsonl(ruta):
     if not os.path.exists(ruta):
         return []
     with open(ruta, encoding='utf-8') as f:
-        return [json.loads(linea) for linea in f if linea.strip()]
+        # si el proceso se cortó al escribir, la última línea queda a medias (sin '}') y se ignora
+        return [json.loads(linea) for linea in f if linea.strip().endswith('}')]
 
 
 def agregar_jsonl(ruta, registro):
