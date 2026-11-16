@@ -49,6 +49,7 @@ def sitio(tmp_path, monkeypatch):
         return SimpleNamespace(content=SITIO[url].encode())
 
     monkeypatch.setattr(scielo, "CARPETA", str(tmp_path))
+    monkeypatch.setattr(scielo, "PAISES", {"pe": "https://www.scielo.org.pe"})
     monkeypatch.setattr(scielo, "descargar", descargar)
     return SimpleNamespace(pedidas=pedidas, carpeta=tmp_path)
 
@@ -64,13 +65,14 @@ def test_leer_articulo_y_resumen_en_espanol():
 
 
 def test_corrida_alterna_revistas_filtra_ingles_y_reanuda(sitio):
-    scielo.ejecutar(5)
-    regs = [json.loads(l) for l in (sitio.carpeta / "articulos.jsonl").read_text(encoding="utf-8").splitlines()]
+    scielo.ejecutar("pe", 5)
+    scielo.consolidar()
+    regs = [json.loads(l) for l in (sitio.carpeta / "pe" / "articulos.jsonl").read_text(encoding="utf-8").splitlines()]
     assert [r["paper_id"][8:17] for r in regs] == [R1, R2, R1]  # un artículo de cada revista por turno
     assert [r["status"] for r in regs] == ["ok", "filtrado", "ok"]
     corpus = (sitio.carpeta / "corpus.jsonl").read_text(encoding="utf-8").splitlines()
     assert len(corpus) == 2 and list(json.loads(corpus[0])) == scielo.CAMPOS
     sitio.pedidas.clear()
-    scielo.ejecutar(5)
+    scielo.ejecutar("pe", 5)
     # solo se relee el catálogo (por si hay revistas nuevas); urls.json y articulos.jsonl evitan el resto
     assert sitio.pedidas == [f"{B}?script=sci_alphabetic&lng=es&nrm=iso"]
